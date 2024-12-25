@@ -1,0 +1,4 @@
+h5py==3.12.1
+keras==3.7.0
+music21==9.3.0
+tensorflow==2.18.0

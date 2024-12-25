@@ -10,8 +10,8 @@ from keras.layers import Dropout
 from keras.layers import LSTM
 from keras.layers import Activation
 from keras.layers import BatchNormalization as BatchNorm
-from keras.utils import np_utils
-from keras.callbacks import ModelCheckpoint
+from tensorflow.keras.utils import to_categorical
+from keras.callbacks import ModelCheckpoint, CSVLogger
 
 def train_network():
     """ Train a Neural Network to generate music """
@@ -23,6 +23,12 @@ def train_network():
     network_input, network_output = prepare_sequences(notes, n_vocab)
 
     model = create_network(network_input, n_vocab)
+    existing_weights = sorted(glob.glob("weights-improvement-*.weights.h5"))
+    if existing_weights: 
+        print(f"Loading weights from {existing_weights[-1]}")
+        model.load_weights(existing_weights[-1])
+    else:
+        print("No weights found, training from scratch")
 
     train(model, network_input, network_output)
 
@@ -81,7 +87,7 @@ def prepare_sequences(notes, n_vocab):
     # normalize input
     network_input = network_input / float(n_vocab)
 
-    network_output = np_utils.to_categorical(network_output)
+    network_output = to_categorical(network_output)
 
     return (network_input, network_output)
 
@@ -110,17 +116,24 @@ def create_network(network_input, n_vocab):
 
 def train(model, network_input, network_output):
     """ train the neural network """
-    filepath = "weights-improvement-{epoch:02d}-{loss:.4f}-bigger.hdf5"
+    filepath = "weights-improvement-{epoch:02d}-{loss:.4f}-bigger.weights.h5"
     checkpoint = ModelCheckpoint(
         filepath,
         monitor='loss',
         verbose=0,
         save_best_only=True,
-        mode='min'
+        mode='min',
+        save_weights_only=True
     )
-    callbacks_list = [checkpoint]
+    existing_weights = sorted(glob.glob("weights-improvement-*.weights.h5"))
+    initial_epoch = 0
+    if existing_weights:
+        # Extract epoch number from filename (assumes format "weights-improvement-XX-*.keras")
+        initial_epoch = int(existing_weights[-1].split('-')[2])
+    history_logger = CSVLogger("training_history.csv", append=True)
+    callbacks_list = [checkpoint, history_logger]
 
-    model.fit(network_input, network_output, epochs=200, batch_size=128, callbacks=callbacks_list)
+    model.fit(network_input, network_output, initial_epoch=initial_epoch, epochs=200, batch_size=128, callbacks=callbacks_list)
 
 if __name__ == '__main__':
     train_network()

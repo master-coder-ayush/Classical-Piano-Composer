@@ -1,5 +1,6 @@
 """ This module generates notes for a midi file using the
     trained neural network """
+import glob
 import pickle
 import numpy
 from music21 import instrument, note, stream, chord
@@ -71,7 +72,12 @@ def create_network(network_input, n_vocab):
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 
     # Load the weights to each node
-    model.load_weights('weights.hdf5')
+    existing_weights = sorted(glob.glob("weights-improvement-*.weights.h5"))
+    if existing_weights:
+        print(f"Loading weights from {existing_weights[-1]}")
+        model.load_weights(existing_weights[-1])
+    else:
+        raise Exception("No weights file found!")
 
     return model
 
